@@ -1,0 +1,2 @@
+- meileur gestion des chaines de carac
+- get argument plustot que get command et get pseudo
