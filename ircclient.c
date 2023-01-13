@@ -26,7 +26,6 @@ int main(int argc, char **argv)
 	// User inputs
 	int port; 
 	char server_addr[30];
-	char uname[30];
 	char dt[50];
 
   char inbuf[BUFSIZE+2];
@@ -59,31 +58,26 @@ int main(int argc, char **argv)
 		perror("Error connect");
 	}
 	
-	printf("Connected\n");
+	// printf("Connected\n");
 
-	while(1) {
-		printf("uname: ");
-		scanf("%s", uname);
-		printf("Authorizing to %s port %d with uname %s...\n", server_addr, port, uname);
-		if(send(sockfd, uname, strlen(uname) , 0) == -1) {
-			stop("Error send");
-		}
+	// while(1) {
+	// 	printf("Authorizing to %s port %d with uname %s...\n", server_addr, port, uname);
+	// 	if(send(sockfd, uname, strlen(uname) , 0) == -1) {
+	// 		stop("Error send");
+	// 	}
 
-		bzero(&message ,BUFSIZE+1);
-		if(recv(sockfd, message, BUFSIZE, 0) < 0 ){
-			stop("Error recv");
-		}
+	// 	bzero(&message ,BUFSIZE+1);
+	// 	if(recv(sockfd, message, BUFSIZE, 0) < 0 ){
+	// 		stop("Error recv");
+	// 	}
 
-		if(strlen(message) > 0) {
-			if(strcmp(message, "unauthorized") == 0)
-				printf("uname alreary used.\n");	
-			else if(strcmp(message, "authorized") == 0)
-				break;
-		}
-	}
-
-	ntp_request(dt);
-	printf("[%s] Authorized\n", dt);
+	// 	if(strlen(message) > 0) {
+	// 		if(strcmp(message, "unauthorized") == 0)
+	// 			printf("uname alreary used.\n");	
+	// 		else if(strcmp(message, "authorized") == 0)
+	// 			break;
+	// 	}
+	// }
 
   int s;
 
@@ -177,6 +171,10 @@ ntp_request(char *dt) {
   int sockfd, n; // Socket file descriptor and the n return result from writing/reading from the socket.
 
   int port = 123; // NTP UDP port number.
+  int server_len;
+  struct timeval tv = {
+    .tv_sec = 1
+  };
 
   char* host_name = "us.pool.ntp.org"; // NTP server host-name.
 
@@ -230,13 +228,20 @@ ntp_request(char *dt) {
 
   sockfd = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP ); // Create a UDP socket.
 
+  if( setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0 ) {
+      stop("Error setsockopt");
+  }
+
   if ( sockfd < 0 )
     stop( "ERROR opening socket" );
 
   server = gethostbyname( host_name ); // Convert URL to IP.
 
-  if ( server == NULL )
-    stop( "ERROR, no such host" );
+  if ( server == NULL ) {
+    perror( "ERROR, no such host" );
+    strcpy(dt, "Error no host");
+    return;
+  }
 
   // Zero out the server address structure.
 
@@ -266,11 +271,12 @@ ntp_request(char *dt) {
 
   // Wait and receive the packet back from the server. If n == -1, it failed.
 
-  n = read( sockfd, ( char* ) &packet, sizeof( ntp_packet ) );
-
-  if ( n < 0 )
-    stop( "ERROR reading from socket" );
-
+  server_len = sizeof(server_addr);
+  if ( (n = recvfrom( sockfd, ( char* ) &packet, sizeof( ntp_packet ), 0, ( struct sockaddr * ) &server_addr, (socklen_t *)&server_len)) < 0 ) {
+    perror( "Error recvfrom" );
+    strcpy(dt, "Error recvfrom");
+    return;
+  }
   // These two fields contain the time-stamp seconds as the packet left the NTP server.
   // The number of seconds correspond to the seconds passed since 1900.
   // ntohl() converts the bit/byte order from the network's to host's "endianness".
@@ -291,4 +297,5 @@ ntp_request(char *dt) {
 	dt[strlen(dt)-1] = '\0';
 
   close(sockfd);
+  return;
 }

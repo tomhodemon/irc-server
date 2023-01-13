@@ -1,2 +1,4 @@
 - meileur gestion des chaines de carac
 - get argument plustot que get command et get pseudo
+- couleur differente si pseudo est enregistre
+- free
