@@ -1,3 +1,0 @@
-- couleur differente si pseudo est enregistre
-- logout when disconnect
-- free
